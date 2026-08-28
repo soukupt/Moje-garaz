@@ -1,4 +1,4 @@
-// Vlastní upozornění v jednom okně: název + datum + čas
+// Vlastní upozornění v jednom okně: název + datum + čas + smazání
 vehicles.forEach(v=>{
   if(v.reminderLabel===undefined)v.reminderLabel='';
   if(v.reminderTime===undefined)v.reminderTime='';
@@ -22,6 +22,7 @@ function openReminderDialog(v){
   const dialog=document.createElement('dialog');
   dialog.id='reminderDialog';
   dialog.className='modal';
+  const hasReminder=Boolean(v.reminderDate||v.reminderLabel||v.reminderTime);
   dialog.innerHTML=`
     <form id="reminderForm" class="modal-card">
       <div class="modal-head">
@@ -35,11 +36,21 @@ function openReminderDialog(v){
       </div>
       <div class="meta" style="margin-top:-4px">Čas je volitelný. Do kalendáře se zatím nic neposílá.</div>
       <button class="primary wide" type="submit">Uložit upozornění</button>
+      ${hasReminder?'<button type="button" id="deleteReminderBtn" style="width:100%;border:1px solid #fecaca;background:#fff1f2;color:#b91c1c;border-radius:12px;padding:12px;font-weight:800">🗑️ Smazat upozornění</button>':''}
     </form>`;
   document.body.appendChild(dialog);
   dialog.showModal();
   dialog.querySelector('#closeReminderDialog')?.addEventListener('click',()=>dialog.close());
   dialog.addEventListener('close',()=>dialog.remove());
+  dialog.querySelector('#deleteReminderBtn')?.addEventListener('click',()=>{
+    if(!confirm(`Smazat upozornění „${reminderName(v)}“?`)) return;
+    v.reminderLabel='';
+    v.reminderDate='';
+    v.reminderTime='';
+    save();
+    dialog.close();
+    render();
+  });
   dialog.querySelector('#reminderForm')?.addEventListener('submit',e=>{
     e.preventDefault();
     const f=new FormData(e.currentTarget);
