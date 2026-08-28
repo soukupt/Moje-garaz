@@ -69,9 +69,14 @@ renderVehicleDetail=function(id){
   fuelCard.className='page-card';
   fuelCard.id='powertrainCard';
   fuelCard.innerHTML=`
-    <h3 style="margin-top:0">Pohon / palivo</h3>
-    <div class="meta" style="margin-bottom:10px">Aktuálně: <strong>${fuelLabel(v.fuelType)}</strong></div>
-    <form id="fuelTypeForm" style="display:grid;gap:10px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div>
+        <div class="meta" style="margin-bottom:2px">Pohon / palivo</div>
+        <strong style="font-size:17px">${fuelLabel(v.fuelType)}</strong>
+      </div>
+      <button id="editFuelBtn" type="button" aria-label="Upravit pohon" title="Upravit pohon" style="width:36px;height:36px;border:1px solid #dbe2ea;background:white;border-radius:10px;font-size:16px;display:grid;place-items:center;padding:0;flex:0 0 auto">✏️</button>
+    </div>
+    <form id="fuelTypeForm" style="display:none;gap:10px;margin-top:12px">
       <select name="fuelType" style="padding:12px;border:1px solid #dbe2ea;border-radius:12px;font-size:16px;background:white">
         <option value="" ${!v.fuelType?'selected':''}>Vyber druh pohonu</option>
         <option value="petrol" ${v.fuelType==='petrol'?'selected':''}>Benzín</option>
@@ -79,7 +84,7 @@ renderVehicleDetail=function(id){
         <option value="hybrid" ${v.fuelType==='hybrid'?'selected':''}>Hybrid</option>
         <option value="electric" ${v.fuelType==='electric'?'selected':''}>Elektroauto</option>
       </select>
-      <button class="primary" type="submit">Uložit pohon</button>
+      <button class="primary" type="submit">Uložit</button>
     </form>`;
   firstCard.insertAdjacentElement('afterend',fuelCard);
 
@@ -117,6 +122,13 @@ renderVehicleDetail=function(id){
   const oilCard=main.querySelector('#oilMileageCard');
   if(oilCard) oilCard.insertAdjacentElement('afterend',serviceCard);
   else fuelCard.insertAdjacentElement('afterend',serviceCard);
+
+  main.querySelector('#editFuelBtn')?.addEventListener('click',()=>{
+    const form=main.querySelector('#fuelTypeForm');
+    if(!form) return;
+    const open=form.style.display!=='none';
+    form.style.display=open?'none':'grid';
+  });
 
   main.querySelector('#fuelTypeForm')?.addEventListener('submit',e=>{
     e.preventDefault();
