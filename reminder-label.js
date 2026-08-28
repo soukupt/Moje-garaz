@@ -30,9 +30,9 @@ function openReminderDialog(v){
         <button type="button" class="close-btn" id="closeReminderDialog">✕</button>
       </div>
       <label>Název upozornění<input name="label" required value="${esc(v.reminderLabel||'')}" placeholder="např. Přezutí"></label>
-      <div class="grid2">
-        <label>Datum<input name="date" required inputmode="numeric" value="${v.reminderDate?compactDate(v.reminderDate):''}" placeholder="15.10.2026"></label>
-        <label>Čas<input name="time" type="time" value="${esc(v.reminderTime||'')}"></label>
+      <div class="grid2" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);width:100%">
+        <label style="min-width:0">Datum<input name="date" required inputmode="numeric" value="${v.reminderDate?compactDate(v.reminderDate):''}" placeholder="15.10.2026" style="width:100%;min-width:0;max-width:100%;box-sizing:border-box"></label>
+        <label style="min-width:0">Čas<input name="time" type="text" inputmode="numeric" value="${esc(v.reminderTime||'')}" placeholder="08:30" style="width:100%;min-width:0;max-width:100%;box-sizing:border-box"></label>
       </div>
       <div class="meta" style="margin-top:-4px">Čas je volitelný. Do kalendáře se zatím nic neposílá.</div>
       <button class="primary wide" type="submit">Uložit upozornění</button>
@@ -60,7 +60,7 @@ function openReminderDialog(v){
     const time=normalizeReminderTime(f.get('time'));
     if(!label){alert('Napiš, na co tě mám upozornit.');return;}
     if(!date){alert('Datum zadej jako 15102026 nebo 15.10.2026.');return;}
-    if(time===null){alert('Čas zadej jako 08:30.');return;}
+    if(time===null){alert('Čas zadej jako 08:30 nebo 0830.');return;}
     v.reminderLabel=label;
     v.reminderDate=date;
     v.reminderTime=time;
