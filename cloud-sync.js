@@ -6,9 +6,9 @@ const CLOUD_GARAGE_ID='tomas-test-garage-v1';
 const CLOUD_TABLE='garage_data';
 
 let cloudReady=false;
-let cloudSaveTimer=null;
 let cloudSaving=false;
 let cloudSaveQueued=false;
+let localChangedDuringCloudLoad=false;
 
 const localSaveOnly=save;
 
@@ -30,6 +30,7 @@ async function cloudLoad(){
 }
 
 async function cloudWrite(){
+  if(!cloudReady)return;
   if(cloudSaving){cloudSaveQueued=true;return}
   cloudSaving=true;
   try{
@@ -41,7 +42,8 @@ async function cloudWrite(){
     const response=await fetch(`${CLOUD_URL}/rest/v1/${CLOUD_TABLE}?on_conflict=garage_id`,{
       method:'POST',
       headers:cloudHeaders({Prefer:'resolution=merge-duplicates,return=minimal'}),
-      body:JSON.stringify(payload)
+      body:JSON.stringify(payload),
+      keepalive:true
     });
     if(!response.ok)throw new Error(`Cloud save ${response.status}: ${await response.text()}`);
   }catch(err){
@@ -52,21 +54,23 @@ async function cloudWrite(){
   }
 }
 
-function scheduleCloudSave(){
-  if(!cloudReady)return;
-  clearTimeout(cloudSaveTimer);
-  cloudSaveTimer=setTimeout(cloudWrite,350);
-}
-
-// Zachová okamžité lokální ukládání a přidá cloud na pozadí.
+// Každé potvrzené uložení jde ihned lokálně a bez prodlevy také do cloudu.
 save=function(){
   localSaveOnly();
-  scheduleCloudSave();
+  if(!cloudReady){localChangedDuringCloudLoad=true;return;}
+  cloudWrite();
 };
 
 async function initCloudSync(){
   try{
     const row=await cloudLoad();
+    // Pokud uživatel během načítání něco změnil, jeho novější lokální změnu nepřepíšeme cloudem.
+    if(localChangedDuringCloudLoad){
+      cloudReady=true;
+      await cloudWrite();
+      console.info('Cloud sync: zachována lokální změna provedená během načítání');
+      return;
+    }
     if(row?.data?.vehicles && Array.isArray(row.data.vehicles)){
       vehicles=row.data.vehicles;
       vehicles.forEach(v=>{if(!Array.isArray(v.serviceHistory))v.serviceHistory=[]});
@@ -80,9 +84,9 @@ async function initCloudSync(){
       console.info('Cloud sync: vytvořena první cloudová kopie');
     }
   }catch(err){
-    // Aplikace zůstane plně funkční s lokálními daty i při výpadku internetu.
     console.error('Cloud sync: načtení selhalo, používám lokální data',err);
     cloudReady=true;
+    if(localChangedDuringCloudLoad) cloudWrite();
   }
 }
 
