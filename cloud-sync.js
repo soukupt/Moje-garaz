@@ -39,11 +39,11 @@ async function cloudWrite(){
       data:{version:1,vehicles},
       updated_at:new Date().toISOString()
     };
+    const body=JSON.stringify(payload);
     const response=await fetch(`${CLOUD_URL}/rest/v1/${CLOUD_TABLE}?on_conflict=garage_id`,{
       method:'POST',
       headers:cloudHeaders({Prefer:'resolution=merge-duplicates,return=minimal'}),
-      body:JSON.stringify(payload),
-      keepalive:true
+      body
     });
     if(!response.ok)throw new Error(`Cloud save ${response.status}: ${await response.text()}`);
   }catch(err){
@@ -61,7 +61,32 @@ save=function(){
   cloudWrite();
 };
 
+function mergeLocalVehicleAppearance(cloudVehicles,localVehicles){
+  let changed=false;
+  const localById=new Map((localVehicles||[]).map(v=>[v.id,v]));
+  const merged=cloudVehicles.map(cloudVehicle=>{
+    const localVehicle=localById.get(cloudVehicle.id);
+    if(!localVehicle)return cloudVehicle;
+    const next={...cloudVehicle};
+    if(localVehicle.vehiclePhoto && !cloudVehicle.vehiclePhoto){
+      next.vehiclePhoto=localVehicle.vehiclePhoto;
+      changed=true;
+    }
+    if(localVehicle.vehicleIcon && !cloudVehicle.vehicleIcon){
+      next.vehicleIcon=localVehicle.vehicleIcon;
+      changed=true;
+    }
+    if(localVehicle.vehicleColor && !cloudVehicle.vehicleColor){
+      next.vehicleColor=localVehicle.vehicleColor;
+      changed=true;
+    }
+    return next;
+  });
+  return {vehicles:merged,changed};
+}
+
 async function initCloudSync(){
+  const localVehiclesBeforeCloud=vehicles;
   try{
     const row=await cloudLoad();
     // Pokud uživatel během načítání něco změnil, jeho novější lokální změnu nepřepíšeme cloudem.
@@ -72,11 +97,15 @@ async function initCloudSync(){
       return;
     }
     if(row?.data?.vehicles && Array.isArray(row.data.vehicles)){
-      vehicles=row.data.vehicles;
+      // Fotografie/ikonu/barvu uloženou lokálně nezahodíme jen proto,
+      // že ve starší cloudové kopii ještě chybí. Tím se fotka po refreshi neztratí.
+      const merged=mergeLocalVehicleAppearance(row.data.vehicles,localVehiclesBeforeCloud);
+      vehicles=merged.vehicles;
       vehicles.forEach(v=>{if(!Array.isArray(v.serviceHistory))v.serviceHistory=[]});
       localSaveOnly();
       cloudReady=true;
       render();
+      if(merged.changed) await cloudWrite();
       console.info('Cloud sync: data načtena ze Supabase');
     }else{
       cloudReady=true;
