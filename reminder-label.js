@@ -1,4 +1,4 @@
-// Vlastní název upozornění (např. Přezutí) + volitelný čas
+// Vlastní upozornění v jednom okně: název + datum + čas
 vehicles.forEach(v=>{
   if(v.reminderLabel===undefined)v.reminderLabel='';
   if(v.reminderTime===undefined)v.reminderTime='';
@@ -15,31 +15,56 @@ function normalizeReminderTime(value){
   return `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
 }
 function reminderTimeText(v){return v.reminderTime?` · ${esc(v.reminderTime)}`:'';}
+function reminderName(v){return String(v.reminderLabel||'Upozornění').trim()||'Upozornění';}
+
+function openReminderDialog(v){
+  document.querySelector('#reminderDialog')?.remove();
+  const dialog=document.createElement('dialog');
+  dialog.id='reminderDialog';
+  dialog.className='modal';
+  dialog.innerHTML=`
+    <form id="reminderForm" class="modal-card">
+      <div class="modal-head">
+        <div><div class="eyebrow">UPOZORNĚNÍ</div><h2 style="margin-bottom:4px">Nastavit upozornění</h2><div class="meta">${esc(v.name)}</div></div>
+        <button type="button" class="close-btn" id="closeReminderDialog">✕</button>
+      </div>
+      <label>Název upozornění<input name="label" required value="${esc(v.reminderLabel||'')}" placeholder="např. Přezutí"></label>
+      <div class="grid2">
+        <label>Datum<input name="date" required inputmode="numeric" value="${v.reminderDate?compactDate(v.reminderDate):''}" placeholder="15.10.2026"></label>
+        <label>Čas<input name="time" type="time" value="${esc(v.reminderTime||'')}"></label>
+      </div>
+      <div class="meta" style="margin-top:-4px">Čas je volitelný. Do kalendáře se zatím nic neposílá.</div>
+      <button class="primary wide" type="submit">Uložit upozornění</button>
+    </form>`;
+  document.body.appendChild(dialog);
+  dialog.showModal();
+  dialog.querySelector('#closeReminderDialog')?.addEventListener('click',()=>dialog.close());
+  dialog.addEventListener('close',()=>dialog.remove());
+  dialog.querySelector('#reminderForm')?.addEventListener('submit',e=>{
+    e.preventDefault();
+    const f=new FormData(e.currentTarget);
+    const label=String(f.get('label')||'').trim();
+    const rawDate=String(f.get('date')||'').trim();
+    const date=parseCzechDate(rawDate);
+    const time=normalizeReminderTime(f.get('time'));
+    if(!label){alert('Napiš, na co tě mám upozornit.');return;}
+    if(!date){alert('Datum zadej jako 15102026 nebo 15.10.2026.');return;}
+    if(time===null){alert('Čas zadej jako 08:30.');return;}
+    v.reminderLabel=label;
+    v.reminderDate=date;
+    v.reminderTime=time;
+    save();
+    dialog.close();
+    render();
+  });
+}
 
 const setServiceBeforeReminderLabel=setService;
 setService=function(id,kind){
   if(kind!=='reminder') return setServiceBeforeReminderLabel(id,kind);
   const v=vehicles.find(x=>x.id===id); if(!v) return;
-  const label=prompt('Název upozornění – např. Přezutí',v.reminderLabel||'');
-  if(label===null) return;
-  const cleanLabel=String(label).trim();
-  if(!cleanLabel){alert('Napiš, na co tě mám upozornit.');return;}
-  const raw=prompt('Datum upozornění – např. 15102026 nebo 15.10.2026',v.reminderDate?compactDate(v.reminderDate):'');
-  if(raw===null) return;
-  const date=parseCzechDate(raw);
-  if(!date){alert('Datum zadej jako 15102026 nebo 15.10.2026.');return;}
-  const rawTime=prompt('Čas upozornění – např. 08:30 (volitelné)',v.reminderTime||'');
-  if(rawTime===null) return;
-  const time=normalizeReminderTime(rawTime);
-  if(time===null){alert('Čas zadej jako 08:30 nebo 0830.');return;}
-  v.reminderLabel=cleanLabel;
-  v.reminderDate=date;
-  v.reminderTime=time;
-  save();
-  render();
+  openReminderDialog(v);
 };
-
-function reminderName(v){return String(v.reminderLabel||'Upozornění').trim()||'Upozornění';}
 
 const renderGarageBeforeReminderLabel=renderGarage;
 renderGarage=function(){
