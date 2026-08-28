@@ -36,72 +36,54 @@ renderVehicleDetail=function(id){
   if(!v) return;
 
   const headerCard=main.querySelector('.page-card');
-  if(headerCard){
-    const old=headerCard.querySelector('.vehicle-avatar');
-    if(old) old.outerHTML=vehicleVisualHtml(v,true);
-  }
+  if(!headerCard) return;
+  const old=headerCard.querySelector('.vehicle-avatar');
+  if(old) old.outerHTML=`<div id="vehicleVisualWrap" style="position:relative;flex:0 0 auto">${vehicleVisualHtml(v,true)}<button id="editVehicleAppearanceBtn" type="button" aria-label="Upravit vzhled vozidla" title="Upravit vzhled" style="position:absolute;right:-6px;bottom:-6px;width:30px;height:30px;border-radius:50%;border:2px solid white;background:#2563eb;color:white;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(15,23,42,.2);padding:0">✏️</button><button id="editVehicleAppearanceText" type="button" style="display:block;width:100%;margin-top:7px;border:0;background:transparent;padding:0;color:#2563eb;font-size:12px;font-weight:700">Upravit</button></div>`;
 
-  const appearanceCard=document.createElement('section');
-  appearanceCard.className='page-card';
-  appearanceCard.id='vehicleAppearanceCard';
-  appearanceCard.innerHTML=`
-    <h3 style="margin-top:0">Vzhled vozidla</h3>
-    <div style="display:flex;gap:14px;align-items:center;margin-bottom:16px">
-      ${vehicleVisualHtml(v,true)}
-      <div><strong>${esc(v.name)}</strong><div class="meta">Vyber ikonu, barvu nebo vlastní fotografii</div></div>
-    </div>
-    <form id="vehicleAppearanceForm" style="display:grid;gap:14px">
-      <div>
-        <div style="font-size:14px;font-weight:700;margin-bottom:8px">Ikona</div>
-        <div id="vehicleIconChoices" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">
-          ${['🚗','🚙','🏎️','🚐','🛻','🏍️','🚚','🚘','🚖','🚕','🚛','🚜'].map(i=>`<button type="button" class="vehicle-icon-choice" data-icon="${i}" style="min-height:46px;border:${chosenVehicleIcon(v)===i?'2px solid #2563eb':'1px solid #dbe2ea'};background:white;border-radius:12px;font-size:24px">${i}</button>`).join('')}
+  const openAppearanceEditor=()=>{
+    if(document.querySelector('#vehicleAppearanceCard')) return;
+    const appearanceCard=document.createElement('section');
+    appearanceCard.className='page-card';
+    appearanceCard.id='vehicleAppearanceCard';
+    appearanceCard.innerHTML=`
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px"><h3 style="margin:0">Vzhled vozidla</h3><button id="closeVehicleAppearance" type="button" style="border:0;background:transparent;font-size:20px;color:#94a3b8">×</button></div>
+      <form id="vehicleAppearanceForm" style="display:grid;gap:14px">
+        <div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:8px">Ikona</div>
+          <div id="vehicleIconChoices" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">
+            ${['🚗','🚙','🏎️','🚐','🛻','🏍️','🚚','🚘','🚖','🚕','🚛','🚜'].map(i=>`<button type="button" class="vehicle-icon-choice" data-icon="${i}" style="min-height:46px;border:${chosenVehicleIcon(v)===i?'2px solid #2563eb':'1px solid #dbe2ea'};background:white;border-radius:12px;font-size:24px">${i}</button>`).join('')}
+          </div>
         </div>
-      </div>
-      <label style="font-size:14px;font-weight:700">Barva ikony
-        <input id="vehicleColorInput" type="color" value="${esc(v.vehicleColor||'#e2e8f0')}" style="display:block;width:100%;height:46px;margin-top:7px;border:1px solid #dbe2ea;border-radius:12px;background:white;padding:3px">
-      </label>
-      <label style="font-size:14px;font-weight:700">Vlastní fotografie
-        <input id="vehiclePhotoInput" type="file" accept="image/*" style="display:block;width:100%;margin-top:7px;font-size:15px">
-      </label>
-      ${v.vehiclePhoto?'<button id="removeVehiclePhoto" type="button" style="border:1px solid #dbe2ea;background:white;border-radius:12px;padding:11px;font-weight:700">Odstranit fotografii</button>':''}
-      <div class="meta">Prototyp ukládá fotografii jen do tohoto prohlížeče. Pro ostrou aplikaci použijeme cloudové úložiště.</div>
-    </form>`;
+        <label style="font-size:14px;font-weight:700">Barva ikony
+          <input id="vehicleColorInput" type="color" value="${esc(v.vehicleColor||'#e2e8f0')}" style="display:block;width:100%;height:46px;margin-top:7px;border:1px solid #dbe2ea;border-radius:12px;background:white;padding:3px">
+        </label>
+        <label style="font-size:14px;font-weight:700">Vlastní fotografie
+          <input id="vehiclePhotoInput" type="file" accept="image/*" style="display:block;width:100%;margin-top:7px;font-size:15px">
+        </label>
+        ${v.vehiclePhoto?'<button id="removeVehiclePhoto" type="button" style="border:1px solid #dbe2ea;background:white;border-radius:12px;padding:11px;font-weight:700">Odstranit fotografii</button>':''}
+        <div class="meta">Prototyp ukládá fotografii jen do tohoto prohlížeče.</div>
+      </form>`;
+    headerCard.insertAdjacentElement('afterend',appearanceCard);
+    appearanceCard.scrollIntoView({behavior:'smooth',block:'start'});
 
-  if(headerCard) headerCard.insertAdjacentElement('afterend',appearanceCard);
+    document.querySelector('#closeVehicleAppearance')?.addEventListener('click',()=>appearanceCard.remove());
+    document.querySelectorAll('.vehicle-icon-choice').forEach(b=>b.addEventListener('click',()=>{
+      v.vehicleIcon=b.dataset.icon;v.vehiclePhoto='';save();renderVehicleDetail(id);
+    }));
+    document.querySelector('#vehicleColorInput')?.addEventListener('change',e=>{
+      v.vehicleColor=e.target.value;v.vehiclePhoto='';save();renderVehicleDetail(id);
+    });
+    document.querySelector('#vehiclePhotoInput')?.addEventListener('change',e=>{
+      const file=e.target.files?.[0];if(!file)return;
+      if(!file.type.startsWith('image/')){alert('Vyber obrázek nebo fotografii.');return;}
+      if(file.size>1500000){alert('Fotografie je pro prototyp příliš velká. Vyber obrázek do 1,5 MB.');return;}
+      const reader=new FileReader();reader.onload=()=>{v.vehiclePhoto=String(reader.result||'');save();renderVehicleDetail(id)};reader.readAsDataURL(file);
+    });
+    document.querySelector('#removeVehiclePhoto')?.addEventListener('click',()=>{v.vehiclePhoto='';save();renderVehicleDetail(id)});
+  };
 
-  document.querySelectorAll('.vehicle-icon-choice').forEach(b=>b.addEventListener('click',()=>{
-    v.vehicleIcon=b.dataset.icon;
-    v.vehiclePhoto='';
-    save();
-    renderVehicleDetail(id);
-  }));
-
-  document.querySelector('#vehicleColorInput')?.addEventListener('change',e=>{
-    v.vehicleColor=e.target.value;
-    v.vehiclePhoto='';
-    save();
-    renderVehicleDetail(id);
-  });
-
-  document.querySelector('#vehiclePhotoInput')?.addEventListener('change',e=>{
-    const file=e.target.files?.[0];
-    if(!file) return;
-    if(!file.type.startsWith('image/')){alert('Vyber obrázek nebo fotografii.');return;}
-    if(file.size>1500000){alert('Fotografie je pro prototyp příliš velká. Vyber obrázek do 1,5 MB.');return;}
-    const reader=new FileReader();
-    reader.onload=()=>{
-      v.vehiclePhoto=String(reader.result||'');
-      save();
-      renderVehicleDetail(id);
-    };
-    reader.readAsDataURL(file);
-  });
-
-  document.querySelector('#removeVehiclePhoto')?.addEventListener('click',()=>{
-    v.vehiclePhoto='';
-    save();
-    renderVehicleDetail(id);
-  });
+  document.querySelector('#editVehicleAppearanceBtn')?.addEventListener('click',openAppearanceEditor);
+  document.querySelector('#editVehicleAppearanceText')?.addEventListener('click',openAppearanceEditor);
 };
 
 render();
